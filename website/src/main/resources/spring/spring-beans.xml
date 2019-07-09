@@ -1,0 +1,148 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:p="http://www.springframework.org/schema/p"
+	   xmlns:aop="http://www.springframework.org/schema/aop"
+	   xmlns:tx="http://www.springframework.org/schema/tx"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:task="http://www.springframework.org/schema/task"
+	   xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+         http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+         http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.1.xsd http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:spring/jdbc.properties</value>
+				<value>classpath:spring/redis.properties</value>
+				<value>classpath:spring/application.properties</value>
+			</list>
+		</property>
+	</bean>
+
+
+	<!--加载配置文件-->
+	<!--  <context:property-placeholder location="classpath*:jdbc.properties"/>-->
+	<!-- 配置数据源-->
+	<!--配置数据源-->
+	<bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+		  init-method="init" destroy-method="close">
+		<property name="driverClassName" value="${jdbc.driverClassName}"/>
+		<property name="url" value="${jdbc.url}" />
+		<property name="username" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+		<property name="initialSize" value="20" />
+		<property name="minIdle" value="20" />
+		<property name="maxActive" value="50" />
+		<property name="maxWait" value="60000" />
+		<property name="timeBetweenEvictionRunsMillis" value="60000" />
+		<property name="minEvictableIdleTimeMillis" value="300000" />
+		<property name="validationQuery" value="select 1" />
+		<property name="testWhileIdle" value="true" />
+		<property name="testOnBorrow" value="false" />
+		<property name="testOnReturn" value="false" />
+		<property name="poolPreparedStatements" value="true" />
+		<property name="maxPoolPreparedStatementPerConnectionSize" value="20" />
+		<property name="filters" value="stat" />
+	</bean>
+
+
+
+	<!--jpa管理工厂-->
+	<bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+
+		<!--数据源-->
+		<property name="dataSource" ref="dataSource"/>
+		<!--适配器-->
+		<property name="jpaVendorAdapter">
+			<bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter"/>
+		</property>
+
+		<!--扫描包-->
+		<property name="packagesToScan" value="com.nplatform"/>
+
+		<!--基本配置-->
+		<property name="jpaProperties">
+			<props>
+				<!--命名策略-->
+				<prop key="hibernate.ejb.naming_strategy">org.hibernate.cfg.ImprovedNamingStrategy</prop>
+
+				<!--基本配置-->
+				<prop key="hibernate.format_sql">true</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<!--
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				-->
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQL5InnoDBDialect</prop>
+
+				<!--二级缓存-->
+				<prop key="hibernate.cache.use_query_cache">true</prop>
+				<prop key="hibernate.cache.use_second_level_cache">true</prop>
+				<prop key="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory</prop>
+			</props>
+		</property>
+
+		<property name="sharedCacheMode" value="ENABLE_SELECTIVE"/>
+	</bean>
+
+
+	<!--配置事务-->
+	<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+		<property name="entityManagerFactory" ref="entityManagerFactory"/>
+	</bean>
+
+	<!--配置基于注解的事务-->
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+
+	<!--配置spring data-->
+	<jpa:repositories base-package="com.nplatform" entity-manager-factory-ref="entityManagerFactory"></jpa:repositories>
+
+	<!-- redis config start -->
+	<!-- 配置JedisPoolConfig实例 -->
+	<bean id="poolConfig" class="redis.clients.jedis.JedisPoolConfig">
+		<property name="maxIdle" value="${redis.maxIdle}" />
+		<property name="maxTotal" value="${redis.maxActive}" />
+		<property name="maxWaitMillis" value="${redis.maxWait}" />
+		<property name="testOnBorrow" value="${redis.testOnBorrow}" />
+	</bean>
+
+	<!-- 配置JedisConnectionFactory -->
+	<bean id="jedisConnectionFactory"
+		  class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory">
+		<property name="hostName" value="${redis.host}" />
+		<property name="port" value="${redis.port}" />
+		<!-- <property name="password" value="${redis.pass}" /> -->
+		<property name="database" value="${redis.dbIndex}" />
+		<property name="poolConfig" ref="poolConfig" />
+	</bean>
+
+	<!-- 配置RedisTemplate -->
+	<bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate">
+		<property name="connectionFactory" ref="jedisConnectionFactory" />
+	</bean>
+
+	<!-- 配置RedisCacheManager -->
+	<bean id="redisCacheManager" class="org.springframework.data.redis.cache.RedisCacheManager">
+		<constructor-arg name="redisOperations" ref="redisTemplate" />
+		<property name="defaultExpiration" value="${redis.expiration}" />
+	</bean>
+
+	<!-- 配置RedisCacheConfig -->
+	<bean id="redisCacheConfig" class="com.nplatform.redis.RedisCacheConfig">
+		<constructor-arg ref="jedisConnectionFactory" />
+		<constructor-arg ref="redisTemplate" />
+		<constructor-arg ref="redisCacheManager" />
+	</bean>
+	<!-- redis config end -->
+
+	<!-- 自动扫描(自动注入) -->
+	<context:component-scan base-package="com.nplatform" />
+  
+</beans>

@@ -1,0 +1,269 @@
+<!-- Hibernate配置 -->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+				<prop key="hibernate.hbm2ddl.auto">none</prop>
+
+				<!--
+				<prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.format_sql">true</prop>-->
+
+				<prop key="hibernate.connection.useUnicode">true</prop>
+				<prop key="hibernate.connection.characterEncoding">UTF-8</prop>
+				<prop key="javax.persistence.validation.mode">none</prop>
+				<prop key="hibernate.current_session_context_class">org.springframework.orm.hibernate4.SpringSessionContext</prop>
+
+				<!-- 指定cache实现类
+				<prop key="hibernate.cache.region.factory_class">org.hibernate.cache.ehcache.EhCacheRegionFactory</prop>
+				<prop key="hibernate.cache.use_second_level_cache">true</prop>
+				<prop key="hibernate.cache.use_query_cache">true</prop>
+				<prop key="hibernate.cache.provider_configuration_file_resource_path">ehcache.xml</prop> -->
+
+			</props>
+		</property>
+		<property name="packagesToScan">
+			<list>
+				<value>com.nplatform.entity</value>
+			</list>
+		</property>
+
+	</bean>
+
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="execute*" propagation="REQUIRED"/>
+			<tx:method name="save*" propagation="REQUIRED"/>
+			<tx:method name="del*" propagation="REQUIRED" />
+			<tx:method name="delete*" propagation="REQUIRED" />
+			<tx:method name="update*" propagation="REQUIRED" />
+			<tx:method name="remove*" propagation="REQUIRED" />
+			<tx:method name="create*" propagation="REQUIRED" />
+
+			<tx:method name="list*" propagation="SUPPORTS" read-only="true" />
+
+			<tx:method name="search*" propagation="REQUIRED" read-only="true" />
+			<tx:method name="is*" propagation="REQUIRED" read-only="true" />
+			<tx:method name="get*" propagation="REQUIRED" read-only="true" />
+			<tx:method name="find*" propagation="REQUIRED" read-only="true" />
+			<tx:method name="query*" propagation="REQUIRED" read-only="true" />
+			<tx:method name="check*" propagation="REQUIRED" read-only="true" />
+			<tx:method name="count*" propagation="REQUIRED" read-only="true" />
+
+		</tx:attributes>
+	</tx:advice>
+
+
+
+    /**
+         * 保存一个对象
+         * @param bean
+         * @return 成功返回ID值
+         * @throws DaoException
+         */
+        public List<Serializable> saveObj(List<? extends BaseBean> beans) throws DaoException;
+
+        /**
+         * 更新对象
+         * @param bean
+         * @return Boolean <br />
+         * 成功返回:true；否则返回:false
+         * @throws DaoException
+         */
+        public boolean updateObj(BaseBean bean) throws DaoException;
+
+        /**
+         * 更新对象
+         * @param beans
+         * @return Boolean <br />
+         * 成功返回:true；否则返回:false
+         * @throws DaoException
+         */
+        public boolean updateObj(List<? extends BaseBean> beans) throws DaoException;
+
+
+
+/**
+     * 保存一个对象
+     * @param bean
+     * @return 成功返回ID值
+     * @throws DaoException
+     */
+    public Serializable saveObj(BaseBean bean) throws DaoException;
+
+
+
+
+	public Serializable saveObj(BaseBean bean) throws DaoException {
+    		Serializable id = null;
+    		if(null != bean){
+    			if(StringUtils.isEmpty(bean.getId())) {
+    				String prefix = bean.getPrefix();
+    				String idNum = StringUtils.createSerialNum();
+    				if(StringUtils.isNotEmpty(prefix)) {
+    					idNum = prefix.toUpperCase()+"_"+idNum;
+    				}
+    				bean.setId(idNum);
+    			}
+    			if(bean instanceof DateBean && ((DateBean)bean).getCreateTime() == null) {
+    				((DateBean)bean).setCreateTime(new Date());
+    			}
+    			//验证数据
+    			Validator validator = new ExecuteValidator(bean);
+    			try {
+    				log.info("正在验证数据格式...");
+    				if(validator.validate()) {
+    					log.info("保存数据...");
+    					try {
+    						id = getSession().save(bean);
+    						log.info("数据保存[成功]...");
+    					} catch (Exception e) {
+    						log.info("数据保存[失败]...");
+    						e.printStackTrace();
+    						id = null;
+    					}
+    				} else {
+    					log.error("验证数据格式[失败]...");
+    				}
+    			} catch (ValidateException e1) {
+    				log.info("验证数据失败---["+e1.getMessage()+"]--");
+    				e1.getStackTrace();
+    				throw new DaoException(e1.getMessage(),e1.getCause());
+    			} catch (Exception e) {
+    				e.getStackTrace();
+    				throw new DaoException(e.getMessage(),e.getCause());
+    			}
+    		}
+    		return id;
+    	}
+
+    	public List<Serializable> saveObj(List<? extends BaseBean> beans) throws DaoException {
+    		List<Serializable> ids = null;
+    		boolean is = false;
+    		log.info("批量保存数据...");
+    		if(null != beans && beans.size()>0) {
+    			ids = new ArrayList<Serializable>();
+    			Validator validator = null;
+    			try {
+    				for (BaseBean o : beans) {
+    					if(StringUtils.isEmpty(o.getId())) {
+    						String prefix = o.getPrefix();
+    						String idNum = StringUtils.createSerialNum();
+    						if(StringUtils.isNotEmpty(prefix)) {
+    							idNum = prefix.toUpperCase()+"-"+idNum;
+    						}
+    						o.setId(idNum);
+    					}
+    					if(o instanceof DateBean && ((DateBean)o).getCreateTime() == null) {
+    						((DateBean)o).setCreateTime(new Date());
+    					}
+    					//验证数据
+    					validator = new ExecuteValidator(o);
+    					if(validator.validate()) {
+    						Serializable id = getSession().save(o);
+    						if(null != id) {
+    							ids.add(id);
+    							is = true;
+    						} else {
+    							is = false;
+    							ids = null;
+    							break;
+    						}
+    					} else {
+    						log.info("数据验证失败...");
+    						is = false;
+    						break;
+    					}
+    				}
+    				if(is) {
+    				  log.info("数据保存[成功]...");
+    				} else {
+    					log.info("数据保存[失败]...");
+    					ids = null;
+    				}
+    			} catch (ValidateException e) {
+    				log.info("验证数据失败---["+e.getMessage()+"]--");
+    				log.info("数据保存[失败]...");
+    				e.getStackTrace();
+    				throw new DaoException(e.getLocalizedMessage(), e.getCause());
+    			}catch (Exception e) {
+    				log.info("数据保存[失败]...");
+    				e.printStackTrace();
+    				throw new DaoException(e.getLocalizedMessage(), e.getCause());
+    			}
+    		}
+    		return ids;
+    	}
+
+    	public boolean updateObj(BaseBean bean) throws DaoException {
+    		boolean is = false;
+    		if(null == bean) {
+    	    	return is;
+    	    }
+    		log.info("更新数据ID["+bean.getId()+"]");
+    		Validator validator = new ExecuteValidator(bean);
+    		try {
+    			log.info("正在验证数据格式...");
+    			if(validator.validate()) {
+    				try {
+    					getSession().update(bean);
+    					is = true;
+    					log.info("更新数据ID["+bean.getId()+"][成功]");
+    				} catch (Exception e) {
+    					log.info("更新数据ID["+bean.getId()+"][失败]");
+    					is = false;
+    					e.printStackTrace();
+    				}
+    			} else {
+    				log.info("数据格式验证[失败]");
+    			}
+    		} catch (ValidateException e) {
+    			log.info("数据格式验证[失败]----["+e.getMessage()+"]--");
+    			is = false;
+    			e.printStackTrace();
+    			throw new DaoException(e.getLocalizedMessage(), e.getCause());
+    		} catch (Exception e) {
+    			e.printStackTrace();
+    			throw new DaoException(e.getLocalizedMessage(), e.getCause());
+    		}
+    		return is;
+    	}
+
+    	public boolean updateObj(List<? extends BaseBean> beans) throws DaoException {
+    		boolean is = false;
+    		log.info("批量更新数据...");
+    		if(null != beans && beans.size()>0) {
+    			Validator validator = null;
+    			try {
+    				for (BaseBean o : beans) {
+    					//验证数据
+    					validator = new ExecuteValidator(o);
+    					log.info("正在验证数据格式...");
+    					if(validator.validate()) {
+    						getSession().update(o);
+    						is = true;
+    					} else {
+    						log.info("数据验证失败...");
+    						is = false;
+    						break;
+    					}
+    				}
+    				if(is) {
+    				  log.info("数据更新[成功]...");
+    				} else {
+    					log.info("数据更新[失败]...");
+    				}
+    			} catch (ValidateException e) {
+    				log.info("验证数据失败---["+e.getMessage()+"]--");
+    				log.info("数据更新[失败]...");
+    				e.printStackTrace();
+    				throw new DaoException(e.getLocalizedMessage(), e.getCause());
+    			}catch (Exception e) {
+    				log.info("数据更新[失败]...");
+    				e.printStackTrace();
+    				throw new DaoException(e.getLocalizedMessage(), e.getCause());
+    			}
+    		}
+    		return is;
+    	}

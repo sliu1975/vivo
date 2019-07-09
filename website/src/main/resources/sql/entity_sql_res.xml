@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap SYSTEM "./mapsql.dtd">
+<sqlMap>
+   <!-- 资源列表 -->
+
+    <!-- 获取用户信息 -->
+    <sqlUnit name="entity_list">
+        <sql>
+            select * from tcompany t where t.category=:category
+        </sql>
+    </sqlUnit>
+    
+    <!-- 获取所有用户信息 -->
+    <sqlUnit name="get_user_all">
+        <sql>
+            select * from t_n_user
+        </sql>
+    </sqlUnit>
+
+    <!-- 获取设备信息 -->
+    <sqlUnit name="device_list">
+        <sql>
+            select t.id,t.name,e.name as ename, c.name as cname, t.serial,usagecode,t.registecode,t.code,
+                   previousecheckdate,nextcheckdate,t.companyid as companyid,t.status as status
+            from tdevice t left join tequipment e on t.topdeviceid = e.id
+                           left join tcompany c on t.companyid = c.id
+            where 1=1 [ and t.name like '%:name%'] [ and t.designorg=:designorg ] [ and t.producerorg=:producerorg][ and t.companyid=:companyid]
+            [ and t.serial like '%:serial%'][ and t.usagecode like '%:usagecode%'][ and t.code like '%:code%']
+        </sql>
+    </sqlUnit>
+
+    <!-- 获取设备待检验信息 -->
+    <sqlUnit name="device_list_check">
+        <sql>
+            select t.id,t.name,e.name as ename, c.name as cname, t.serial,usagecode,t.registecode,t.code,
+            previousecheckdate,nextcheckdate,t.companyid as companyid,t.status as status
+            from tdevice t left join tequipment e on t.topdeviceid = e.id
+            left join tcompany c on t.companyid = c.id
+            where 1=1 [ and t.nextcheckdate=:checkdate ]
+
+        </sql>
+    </sqlUnit>
+
+    <sqlUnit name="checkplan_list">
+        <sql>
+            select c.id,t.name,e.name as ename, c.name as cname, t.serial,usagecode,t.registecode,t.code,
+            plandate,reportnumber,c.status as status
+            from tcheckplan c left join tdevice t on c.deviceid=t.id
+            left join tequipment e on t.topdeviceid = e.id
+            where 1=1 [ and c.status=:status][ and t.name like '%:name%'] [ and t.checkerorg=:checkerorg ][ and t.companyid=:companyid]
+            [ and t.serial like '%:serial%'][ and t.usagecode like '%:usagecode%'][ and t.code like '%:code%']
+        </sql>
+    </sqlUnit>
+
+    <sqlUnit name="app_list">
+        <sql>
+            select c.id,c.code as appcode,e.name as ename, t.name as cname, t.code as code, plandate,c.status as status,t2.name as checker
+            from tapplication c
+            left join tcompany t on c.companyid=t.id
+            left join tcompany t2 on c.checker=t2.id
+            left join tequipment e on c.equipmentid = e.id
+            where 1=1 [ and c.status=:status][ and e.name like '%:name%'] [ and c.checker=:checkerorg ][ and c.companyid=:companyid]
+            [ and e.code like '%:code%']
+            order by c.plandate desc
+        </sql>
+    </sqlUnit>
+
+    <sqlUnit name="app_list_top5">
+        <sql>
+            select c.id,c.code as appcode,e.name as ename, t.name as cname, t.code as code, plandate,c.status as status,t2.name as checker
+            from tapplication c
+            left join tcompany t on c.companyid=t.id
+            left join tcompany t2 on c.checker=t2.id
+            left join tequipment e on c.equipmentid = e.id
+            where 1=1 [ and c.status=:status][ and e.name like '%:name%'] [ and c.checker=:checkerorg ][ and c.companyid=:companyid]
+            [ and e.code like '%:code%']
+            order by c.plandate desc limit 5
+        </sql>
+    </sqlUnit>
+    
+    <include file="/sql/override_base_sql_res.xml" />
+</sqlMap>

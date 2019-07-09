@@ -1,0 +1,18 @@
+部署方案
+1. 配置数据库
+   修改 jdbc.properties 文件
+   根据数据库实例填写：
+   jdbc.url
+   jdbc.username
+   jdbc.password
+
+2. 配置图片目录
+   图片目录可以任意设置
+   修改 application.properties
+
+   upload.path=d:\\log
+
+3. 将字体库复制到系统的字体库中
+   windows环境下，将字体复制到 Windows/Fonts目录下
+
+   Linux环境下，将字体文件复制到
