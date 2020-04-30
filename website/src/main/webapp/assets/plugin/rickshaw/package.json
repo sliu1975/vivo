@@ -28,7 +28,7 @@
     "clean-css": "^3.4.28",
     "coveralls": "^2.11.9",
     "istanbul": "^0.4.3",
-    "jquery": "^3.2.1",
+    "jquery": "^3.5.0",
     "jsdom": "^8.1.0",
     "jshint": "^2.9.5",
     "nodemon": "^1.11.0",
